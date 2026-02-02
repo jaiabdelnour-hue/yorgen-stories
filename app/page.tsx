@@ -1,11 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { generateStory } from '@/lib/gemini';
+import { generateStoryAction } from './actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Moon, Star, Sparkles, BookOpen, Volume2, Truck, Cat, Rocket, Castle, Music, VolumeX, Pause, Play, User, X } from 'lucide-react';
+import { Moon, Star, Sparkles, BookOpen, Volume2, Truck, Cat, Rocket, Castle, VolumeX, Pause, Play, User } from 'lucide-react';
 
 export default function Home() {
   const [topic, setTopic] = useState('');
@@ -16,7 +16,6 @@ export default function Home() {
   const [isMusicPlaying, setIsMusicPlaying] = useState(false);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [speechAudio, setSpeechAudio] = useState<HTMLAudioElement | null>(null);
   
   // Background music
   useEffect(() => {
@@ -40,21 +39,23 @@ export default function Home() {
     setStory(null);
     setImageUrl(null);
     
-    // Stop any playing audio when generating new story
-    if (speechAudio) {
-        speechAudio.pause();
-        setSpeechAudio(null);
-        setIsSpeaking(false);
-    }
+    // Stop speaking
     window.speechSynthesis.cancel();
+    setIsSpeaking(false);
     
     const safeTopic = encodeURIComponent(selectedTopic);
     const generatedImage = `https://image.pollinations.ai/prompt/cute%20gentle%20${safeTopic}%20children%20book%20illustration?width=800&height=400&nologo=true&seed=${Math.random()}`;
 
     try {
-      const result = await generateStory(selectedTopic, childName);
-      setStory(result);
-      setImageUrl(generatedImage);
+      // Call the Server Action instead of the client-side library
+      const result = await generateStoryAction(selectedTopic, childName);
+      
+      if (result.success) {
+        setStory(result.data);
+        setImageUrl(generatedImage);
+      } else {
+        alert("The story spell fizzled out. Please try again!");
+      }
     } catch (error) {
       alert("Oops! The magic wand broke. Try again!");
     } finally {
@@ -62,43 +63,17 @@ export default function Home() {
     }
   };
 
-  const handleSpeak = async () => {
+  const handleSpeak = () => {
     if (!story) return;
-
-    // If currently speaking, pause/stop
     if (isSpeaking) {
-      if (speechAudio) {
-        speechAudio.pause();
-        setIsSpeaking(false);
-      }
+      window.speechSynthesis.cancel();
+      setIsSpeaking(false);
       return;
     }
-
-    // If we already have the audio object (paused), resume it
-    if (speechAudio) {
-        speechAudio.play();
-        setIsSpeaking(true);
-        return;
-    }
-
-    // Using a direct TTS API call for 'Aimee' (ElevenLabs via proxy or similar high-quality service)
-    // NOTE: Direct ElevenLabs client-side requires an API key in the frontend which is risky.
-    // For this demo, we will use a server action or a safer proxy in a real app.
-    // However, to use the specific "Aimee" voice ID provided (zA6D7RyKdc2EClouEMkP),
-    // we need to call the ElevenLabs API.
-    
-    // IMPORTANT: In a production app, move this fetch to a server-side API route (pages/api/speak.ts)
-    // to hide your ElevenLabs API Key. for local dev/demo, we can do it here if you provide the key.
-    
-    // Falling back to browser TTS if no ElevenLabs key is present, but configured for the specific request:
-    alert("To use the premium 'Aimee' voice, we need to connect an ElevenLabs API Key! For now, I'll use the best available system voice.");
-    
-    // Fallback to standard browser TTS for now until we add the ElevenLabs logic
     const utterance = new SpeechSynthesisUtterance(`${story.title}. ${story.content}`);
     utterance.rate = 0.9; 
     const voices = window.speechSynthesis.getVoices();
-    // Try to match closest to 'Aimee' description (Soft, ASMR-like)
-    const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Samantha"));
+    const preferredVoice = voices.find(v => v.name.includes("Google US English") || v.name.includes("Samantha") || v.name.includes("Zira"));
     if (preferredVoice) utterance.voice = preferredVoice;
     utterance.onend = () => setIsSpeaking(false);
     window.speechSynthesis.speak(utterance);
@@ -107,7 +82,6 @@ export default function Home() {
 
   return (
     <main className="min-h-screen bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-indigo-900 via-[#1a1c2e] to-[#050505] text-white p-4 md:p-8 flex flex-col items-center justify-center font-sans relative overflow-hidden transition-all">
-      {/* ... (UI code remains the same for brevity, will re-insert if full file rewrite is needed) ... */}
       
       {/* Background FX */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
